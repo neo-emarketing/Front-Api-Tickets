@@ -35,7 +35,7 @@ const ScanResult = ({ result }) => {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <span className="text-3xl font-bold" style={{ fontSize: '2rem' }}>
-            {resultado === 'success' ? '✓' : resultado === 'already_used' ? '⚠' : '✗'}
+            {resultado === 'success' ? '' : resultado === 'already_used' ? '' : ''}
           </span>
           <h2 className={`text-2xl font-extrabold tracking-wide ${style.text}`}>
             {style.label}

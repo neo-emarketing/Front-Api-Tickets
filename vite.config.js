@@ -1,3 +1,4 @@
+// frontend/vite.config.js
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -8,7 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://crawling-evasion-freehand.ngrok-free.dev',
+        target: 'http://localhost:3000',
         changeOrigin: true
       }
     }

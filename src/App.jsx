@@ -3,6 +3,9 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Scanner from './pages/Scanner'
 import PrivateRoute from './components/PrivateRoute'
+import Reportes from './pages/Reportes'
+import StaffManagement from './pages/StaffManagement'; 
+
 
 function App() {
   return (
@@ -18,6 +21,22 @@ function App() {
           }
         />
         <Route
+  path="/reportes"
+  element={
+    <PrivateRoute allowedRoles={['admin', 'supervisor']}>
+      <Reportes />
+    </PrivateRoute>
+  }
+/>
+        <Route
+          path="/reportes"
+          element={
+            <PrivateRoute>
+              <Reportes />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/scanner"
           element={
             <PrivateRoute>
@@ -25,6 +44,16 @@ function App() {
             </PrivateRoute>
           }
         />
+        
+
+<Route
+  path="/staff"
+  element={
+    <PrivateRoute allowedRoles={['admin']}>
+      <StaffManagement />
+    </PrivateRoute>
+  }
+/>
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>

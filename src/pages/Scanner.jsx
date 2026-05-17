@@ -30,6 +30,7 @@ const Scanner = () => {
     useState('')
 
   const html5QrCodeRef = useRef(null)
+  const cameraZoomRef = useRef(null)
 
   const navigate = useNavigate()
 
@@ -60,8 +61,124 @@ const Scanner = () => {
   }, [])
 
   // Cámara
-  const startCamera = () => {
+  const getQrBoxSize = () => {
+    const minSide = Math.min(
+      window.innerWidth || 320,
+      window.innerHeight || 320
+    )
+
+    const size = Math.max(
+      220,
+      Math.min(340, Math.floor(minSide * 0.72))
+    )
+
+    return {
+      width: size,
+      height: size
+    }
+  }
+
+  const applyCameraZoom = async () => {
+    const video = document.querySelector(
+      '#reader video'
+    )
+    const stream = video?.srcObject
+    const track =
+      stream?.getVideoTracks?.()[0]
+
+    if (!track?.getCapabilities) return
+
+    const capabilities =
+      track.getCapabilities()
+
+    if (!capabilities.zoom) return
+
+    const minZoom =
+      capabilities.zoom.min || 1
+    const maxZoom =
+      capabilities.zoom.max || minZoom
+    const step =
+      capabilities.zoom.step || 0.1
+    const targetZoom = Math.min(
+      maxZoom,
+      Math.max(minZoom, 2)
+    )
+    const roundedZoom =
+      Math.round(targetZoom / step) * step
+
+    await track.applyConstraints({
+      advanced: [
+        {
+          zoom: roundedZoom
+        }
+      ]
+    })
+
+    cameraZoomRef.current = roundedZoom
+  }
+
+  const getVideoConstraints = async () => {
+    const fallback = {
+      facingMode: {
+        ideal: 'environment'
+      },
+      width: {
+        ideal: 1280
+      },
+      height: {
+        ideal: 720
+      },
+      focusMode: {
+        ideal: 'continuous'
+      }
+    }
+
+    try {
+      const cameras =
+        await Html5Qrcode.getCameras()
+      const rearCameraWords =
+        /back|rear|environment|trasera|posterior/i
+      const ultraWideWords =
+        /ultra|wide|angular|gran angular/i
+      const rearCameras =
+        cameras.filter((camera) =>
+          rearCameraWords.test(
+            camera.label || ''
+          )
+        )
+      const preferredCamera =
+        rearCameras.find(
+          (camera) =>
+            !ultraWideWords.test(
+              camera.label || ''
+            )
+        ) ||
+        rearCameras[0] ||
+        cameras[cameras.length - 1]
+
+      if (!preferredCamera?.id) {
+        return fallback
+      }
+
+      return {
+        ...fallback,
+        deviceId: {
+          exact: preferredCamera.id
+        }
+      }
+    } catch (err) {
+      console.warn(
+        'No se pudo seleccionar camara:',
+        err
+      )
+
+      return fallback
+    }
+  }
+
+  const startCamera = async () => {
     setCameraError('')
+    cameraZoomRef.current = null
     setCameraStatus(
       'Iniciando cámara...'
     )
@@ -80,25 +197,38 @@ const Scanner = () => {
     html5QrCodeRef.current =
       new Html5Qrcode('reader')
 
+    const videoConstraints =
+      await getVideoConstraints()
+
     const config = {
-      fps: 10,
-      qrbox: {
-        width: 260,
-        height: 260
-      },
-      aspectRatio: 1
+      fps: 15,
+      qrbox: getQrBoxSize(),
+      aspectRatio: 1,
+      disableFlip: true,
+      videoConstraints
     }
 
     html5QrCodeRef.current
       .start(
-        { facingMode: 'environment' },
+        videoConstraints,
         config,
         onScanSuccess,
         onScanFailure
       )
-      .then(() => {
+      .then(async () => {
+        try {
+          await applyCameraZoom()
+        } catch (err) {
+          console.warn(
+            'Zoom de camara no disponible:',
+            err
+          )
+        }
+
         setCameraStatus(
-          'Cámara activa - Esperando QR'
+          cameraZoomRef.current
+            ? `Camara activa con zoom ${cameraZoomRef.current}x - Esperando QR`
+            : 'Camara activa - Esperando QR'
         )
       })
       .catch((err) => {
@@ -127,6 +257,7 @@ const Scanner = () => {
     }
 
     setCameraStatus('')
+    cameraZoomRef.current = null
   }
 
   // Escaneo exitoso
